@@ -90,6 +90,7 @@ void win_free(Window *w)
 {
     if (!w)
         return;
+    free(w->pending_cmd);
     if (w->pid > 0)
         kill(-w->pid, SIGHUP);
     win_close_fd(w);
@@ -136,6 +137,15 @@ void win_feed(int i, const char *p, size_t n)
 {
     Window *w = S.win[i];
     vt_feed(w->vt, p, n);
+    /* The first output means the shell is up and reading, so a configured
+     * command can be typed in now without the shell's setup eating it. */
+    if (w->pending_cmd) {
+        char *cmd = w->pending_cmd;
+        w->pending_cmd = NULL;
+        win_write(w, cmd, strlen(cmd));
+        win_write(w, "\n", 1);
+        free(cmd);
+    }
     if (w->vt->reply_len) {
         win_write(w, w->vt->reply, w->vt->reply_len);
         w->vt->reply_len = 0;

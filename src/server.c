@@ -1,5 +1,6 @@
 /* The session server: owns the windows, keeps running while nobody is
  * attached, and renders for whichever client is attached. */
+#include "conf.h"
 #include "config.h"
 #include "duo.h"
 #include "proto.h"
@@ -497,7 +498,8 @@ static void accept_conn(int lfd)
 
 /* ---- main loop -------------------------------------------------------- */
 
-static int server_run(int lfd, const char *path, int rows, int cols)
+static int server_run(int lfd, const char *path, int rows, int cols,
+                      const char *conf_path)
 {
     S.path = path;
     S.rows = rows;
@@ -522,16 +524,37 @@ static int server_run(int lfd, const char *path, int rows, int cols)
     signal(SIGHUP, SIG_IGN);
     signal(SIGPIPE, SIG_IGN);
 
-    for (int i = 0; i < INITIAL_WINDOWS && i < MAX_WINDOWS; i++) {
+    SessionConf conf;
+    char conf_err[256];
+    int have_conf = conf_path && *conf_path &&
+                    conf_load(conf_path, &conf, conf_err, sizeof conf_err) == 0;
+    int nwin = have_conf ? conf.nwindows : INITIAL_WINDOWS;
+
+    for (int i = 0; i < nwin && i < MAX_WINDOWS; i++) {
         Window *w = win_new(i + 1, MAX(rows - 1, 1), cols);
         if (!w)
             return 1;
+        if (have_conf) {
+            if (conf.win[i].name[0])
+                snprintf(w->name, sizeof w->name, "%s", conf.win[i].name);
+            if (conf.win[i].cmd[0])
+                w->pending_cmd = strdup(conf.win[i].cmd);
+        }
         S.win[S.nwins++] = w;
     }
     S.npanes = 1;
-    S.pane[0].win = 0;
     S.focus = 0;
-    S.last_win = S.nwins > 1 ? 1 : 0;   /* so C-a C-a toggles from the start */
+    S.pane[0].win = (have_conf && conf.focus) ? conf.focus - 1 : 0;
+    if (have_conf) {
+        for (int p = 1; p < conf.panes && p < MAX_PANES; p++)
+            session_add_pane();
+        S.focus = 0;
+        if (conf.layout >= 0)
+            S.layout = conf.layout;
+    }
+    /* so C-a C-a toggles from the start */
+    S.last_win = S.nwins > 1 ? (S.pane[0].win == 0 ? 1 : 0) : 0;
+    session_apply_layout();
 
     long long names_at = 0;
 
@@ -634,7 +657,7 @@ static int server_run(int lfd, const char *path, int rows, int cols)
     return 0;
 }
 
-int server_start(const char *path, int rows, int cols)
+int server_start(const char *path, int rows, int cols, const char *conf_path)
 {
     int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
     if (fd < 0) {
@@ -674,7 +697,7 @@ int server_start(const char *path, int rows, int cols)
             if (null > STDERR_FILENO)
                 close(null);
         }
-        _exit(server_run(fd, path, rows, cols));
+        _exit(server_run(fd, path, rows, cols, conf_path));
     }
     waitpid(pid, NULL, 0);
     close(fd);

@@ -25,6 +25,7 @@ typedef struct {
     char    name[NAME_LEN];       /* set with C-a A; empty means use auto_name */
     int     activity;       /* output arrived while off screen */
     int     seen;           /* has been on screen at least once */
+    char   *pending_cmd;    /* typed in once the shell shows signs of life */
 } Window;
 
 /* A pane shows exactly one window, and a window appears in at most one pane,

@@ -5,7 +5,9 @@
  *   duo -s NAME    use a named session instead of "default"
  *   duo -l         list running sessions
  *   duo -k         end the session and all its windows
+ *   duo -f FILE    session file to use when starting it
  */
+#include "conf.h"
 #include "duo.h"
 #include "proto.h"
 
@@ -69,10 +71,12 @@ int sock_connect(const char *path)
 static void usage(FILE *f)
 {
     fprintf(f,
-        "usage: duo [-s NAME] [-l | -k]\n"
+        "usage: duo [-s NAME] [-f FILE] [-l | -k]\n"
         "\n"
         "  (no option)  attach to the session, starting it if it isn't running\n"
         "  -s NAME      use session NAME instead of \"default\"\n"
+        "  -f FILE      session file to use when starting the session\n"
+        "               (default: ~/.config/duo/NAME.conf, else default.conf)\n"
         "  -l           list running sessions\n"
         "  -k           end the session, closing all its windows\n"
         "  -h           this help\n"
@@ -113,11 +117,13 @@ static int list_sessions(void)
 int main(int argc, char **argv)
 {
     const char *name = "default";
+    const char *conf_path = NULL;
     int kill_it = 0, list = 0, opt;
 
-    while ((opt = getopt(argc, argv, "s:lkh")) != -1) {
+    while ((opt = getopt(argc, argv, "s:f:lkh")) != -1) {
         switch (opt) {
         case 's': name = optarg; break;
+        case 'f': conf_path = optarg; break;
         case 'l': list = 1; break;
         case 'k': kill_it = 1; break;
         case 'h': usage(stdout); return 0;
@@ -160,6 +166,19 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    /* A config file only applies when the session starts, so check it here,
+     * while there is still a normal terminal to print the mistake to. */
+    char conf_buf[512], conf_err[256];
+    if (!conf_path && conf_find(name, conf_buf, sizeof conf_buf))
+        conf_path = conf_buf;
+    if (conf_path) {
+        SessionConf conf;
+        if (conf_load(conf_path, &conf, conf_err, sizeof conf_err) < 0) {
+            fprintf(stderr, "duo: %s\n", conf_err);
+            return 1;
+        }
+    }
+
     int fd = sock_connect(path);
     if (fd < 0) {
         if (errno != ENOENT && errno != ECONNREFUSED) {
@@ -168,7 +187,8 @@ int main(int argc, char **argv)
         }
         struct winsize ws = { 0 };
         ioctl(STDIN_FILENO, TIOCGWINSZ, &ws);
-        if (server_start(path, ws.ws_row ? ws.ws_row : 24, ws.ws_col ? ws.ws_col : 80) < 0)
+        if (server_start(path, ws.ws_row ? ws.ws_row : 24, ws.ws_col ? ws.ws_col : 80,
+                         conf_path) < 0)
             return 1;
         fd = sock_connect(path);
         if (fd < 0) {

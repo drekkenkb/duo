@@ -13,7 +13,7 @@ int sock_connect(const char *path);
 
 /* Starts a detached server for `path` with shells sized rows x cols.
  * Returns once the socket is listening, so a connect() right after works. */
-int server_start(const char *path, int rows, int cols);
+int server_start(const char *path, int rows, int cols, const char *conf_path);
 
 /* Runs the attached client until detach. Returns the process exit status. */
 int client_attach(int fd);

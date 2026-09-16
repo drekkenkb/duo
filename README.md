@@ -45,6 +45,40 @@ puts them on screen together. Change the starting count with
 If the connection drops, run `duo` again after reconnecting; if an old client
 is somehow still attached, the new one takes over.
 
+A session file can replace that default start: see below.
+
+## Session files
+
+To have a session always open the same windows, write a file like this:
+
+```
+layout columns          # tabs, columns, rows or grid
+panes 2                 # how many panes are open at the start
+focus 1                 # which window has focus (1-based)
+
+window shell
+window climate -- watch -n 5 python3 /home/matt/aht20/aht20.py
+window logs    -- journalctl -f
+```
+
+duo looks for `~/.config/duo/<session>.conf`, then `~/.config/duo/default.conf`,
+and `duo -f FILE` overrides both. `examples/session.conf` in this repo is a
+commented starting point.
+
+- **`window [NAME] [-- COMMAND]`** opens a window. The name is optional; with
+  no name the status bar shows whatever is running. Everything after `--` is
+  typed into that window's shell, so Ctrl-C stops it and leaves you at a
+  prompt in that window rather than closing it.
+- **Repeating commands** are just `watch`: `watch -n 5 CMD` reruns every five
+  seconds and clears in between. For the opposite — keeping every reading so
+  you can scroll back through them with `C-a [` — use a loop instead:
+  `while :; do CMD; sleep 5; done`. duo redraws only the cells that changed,
+  so neither flickers.
+- The file is read **when a session starts**. Attaching to a running session
+  ignores it; `duo -k` first if you want to apply a change.
+- Mistakes are reported before anything starts, with the line number:
+  `duo: line 3: layout must be tabs, columns, rows or grid`.
+
 ## Keys
 
 Press **Ctrl-a**, then:
@@ -186,6 +220,7 @@ windows rather than showing it twice.
 
 ```
 src/main.c    command line, socket path, start-or-attach
+src/conf.c    session files
 src/client.c  raw terminal <-> socket
 src/server.c  event loop, connections, key bindings
 src/session.h the session model: windows, panes, modes
