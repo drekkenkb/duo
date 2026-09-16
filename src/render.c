@@ -180,14 +180,15 @@ static void draw_prompt_bar(int y)
         break;
     case PROMPT_KILL: {
         Window *w = focused_window();
-        snprintf(text, sizeof text, " Close window %d:%s? (y/n) ",
+        snprintf(text, sizeof text, " Close window %d:%s?  Enter or y to confirm, n to cancel ",
                  S.pane[S.focus].win + 1, w ? win_label(w) : "?");
         fill_row(y, WARN_FG, WARN_BG);
         put_str(0, y, text, WARN_FG, WARN_BG, ATTR_BOLD, S.cols);
         return;
     }
     case PROMPT_QUIT:
-        snprintf(text, sizeof text, " End the session, closing %d window%s? (y/n) ",
+        snprintf(text, sizeof text, " End the session, closing %d window%s?"
+                 "  Enter or y to confirm, n to cancel ",
                  S.nwins, S.nwins == 1 ? "" : "s");
         fill_row(y, WARN_FG, WARN_BG);
         put_str(0, y, text, WARN_FG, WARN_BG, ATTR_BOLD, S.cols);
@@ -306,21 +307,21 @@ static const char *help_lines[] = {
     "duo: press " PREFIX_NAME ", then",
     "",
     "c  new window          1-9  go to window",
-    "n  p  next/previous    \"    pick from a list",
-    "A  rename window       k    close window",
+    "n  p  next/previous    w    pick from a list",
+    ",  rename window       k    close window",
     PREFIX_NAME "  last window",
     "",
-    "S  split: add a pane   X    close this pane",
+    "S  split: add a pane   x    close this pane",
     "Tab  next pane         arrows  focus by direction",
-    "t  one window          v    columns",
-    "s  rows                g    grid",
+    "t  one window          v    columns  (v, s and g",
+    "s  rows                g    grid      split for you)",
     "Space  cycle layouts",
     "",
     "[  copy mode: move, / search, Space select,",
     "   Enter copy, q leave      ]  paste",
     "",
     "d  detach   r  redraw   a  literal " PREFIX_NAME,
-    "Q  end session          ?  this help",
+    "q  end session          h  " PREFIX_NAME "-h  this help",
     "",
     "any key closes this",
 };

@@ -91,9 +91,8 @@ Press **Ctrl-a**, then:
 | `1`…`9`    | go to that window                             |
 | `n` `p`    | next / previous window                        |
 | `Ctrl-a`   | back to the last window                       |
-| `"`        | pick from a list (arrows or a number, Enter)  |
-| `w`        | list windows in the status bar                |
-| `A`        | rename the window (empty name restores the automatic one) |
+| `w` or `"` | pick from a list (arrows or a number, Enter)  |
+| `,` or `A` | rename the window (empty name restores the automatic one) |
 | `k`        | close the window (asks first)                 |
 
 **Panes and layouts**
@@ -101,7 +100,7 @@ Press **Ctrl-a**, then:
 | Key            | Action                                      |
 |----------------|---------------------------------------------|
 | `S`            | split: add a pane, showing another window   |
-| `X`            | close the focused pane (the window stays open) |
+| `x` or `X`     | close the focused pane (the window stays open) |
 | `Tab` or `o`   | focus the next pane                         |
 | arrow keys     | focus the pane in that direction            |
 | `t`            | one window, full screen                     |
@@ -130,8 +129,14 @@ Press **Ctrl-a**, then:
 | `d` | detach; windows keep running                    |
 | `r` | redraw                                          |
 | `a` | send a literal Ctrl-a (start of line in bash)   |
-| `Q` | end the session and close every window (asks first) |
-| `?` | help                                            |
+| `q` or `Q` | end the session and close every window (asks first) |
+| `h`, `Ctrl-h` or `?` | help                           |
+
+Every binding that needs shift has an unshifted alias, which helps on a phone
+keyboard: `,` renames, `x` closes a pane, `w` opens the window list, `q` ends
+the session, and `h` or `Ctrl-h` shows the help. Questions like "close this
+window?" take **Enter** as well as `y`. `v`, `s` and `g` open a second pane by
+themselves, so `S` is only needed for a third.
 
 The status bar lists the windows with what's running in each. The focused one
 is highlighted, ones visible in another pane are shaded, and a `*` marks a

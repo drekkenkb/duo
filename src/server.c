@@ -152,7 +152,7 @@ void prompt_keys(const char *p, size_t n)
         int kind = S.prompt;
         S.prompt = PROMPT_NONE;
         S.dirty = 1;
-        if (p[0] == 'y' || p[0] == 'Y') {
+        if (p[0] == 'y' || p[0] == 'Y' || p[0] == '\r' || p[0] == '\n') {
             if (kind == PROMPT_QUIT)
                 S.quit = 1;
             else
@@ -221,16 +221,6 @@ static void picker_keys(const char *p, size_t n)
     S.dirty = 1;
 }
 
-static void list_windows_message(void)
-{
-    char text[160];
-    size_t at = 0;
-    for (int i = 0; i < S.nwins && at + 8 < sizeof text; i++)
-        at += (size_t)snprintf(text + at, sizeof text - at, "%s%d:%s",
-                               i ? "  " : "", i + 1, win_label(S.win[i]));
-    set_message("%s", text);
-}
-
 /* A split layout needs something to split: with a single pane open, make the
  * second one rather than just relabelling the layout. */
 static void set_layout(int lay)
@@ -277,16 +267,16 @@ static int prefix_command(const char *p, size_t n)
     switch (k) {
     case 'c': session_new_window(); break;
     case 'k': S.prompt = PROMPT_KILL; break;
-    case 'A': {
+    /* Unshifted aliases throughout: phone keyboards make shift a chore. */
+    case 'A': case ',': {
         Window *w = focused_window();
         prompt_open(PROMPT_RENAME, w ? w->name : "");
         break;
     }
-    case '"':
+    case '"': case 'w':
         S.picker = 1;
         S.picker_sel = S.pane[S.focus].win;
         break;
-    case 'w': list_windows_message(); break;
     case 'n': session_next_window(1); break;
     case 'p': session_next_window(-1); break;
     case '0': session_select_window(9); break;
@@ -294,7 +284,7 @@ static int prefix_command(const char *p, size_t n)
         session_focus_pane((S.focus + 1) % S.npanes);
         break;
     case 'S': session_add_pane(); break;
-    case 'X': session_close_pane(); break;
+    case 'X': case 'x': session_close_pane(); break;
     case 't': set_layout(LAYOUT_TABS); break;
     case 'v': case '|': set_layout(LAYOUT_COLS); break;
     case 's': case '-': set_layout(LAYOUT_ROWS); break;
@@ -304,8 +294,8 @@ static int prefix_command(const char *p, size_t n)
     case ']': cm_paste(); break;
     case 'd': want_detach = 1; break;
     case 'r': S.full_redraw = 1; break;
-    case '?': S.help = 1; break;
-    case 'Q': S.prompt = PROMPT_QUIT; break;
+    case '?': case 'h': case 0x08: case 0x7f: S.help = 1; break;
+    case 'Q': case 'q': S.prompt = PROMPT_QUIT; break;
     case 0x1b: break;
     default:
         if (k >= '1' && k <= '9') {
