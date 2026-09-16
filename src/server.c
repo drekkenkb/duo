@@ -294,7 +294,7 @@ static int prefix_command(const char *p, size_t n)
     case ']': cm_paste(); break;
     case 'd': want_detach = 1; break;
     case 'r': S.full_redraw = 1; break;
-    case '?': case 'h': case 0x08: case 0x7f: S.help = 1; break;
+    case '?': case 'h': S.help = 1; break;
     case 'Q': case 'q': S.prompt = PROMPT_QUIT; break;
     case 0x1b: break;
     default:

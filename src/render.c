@@ -321,7 +321,7 @@ static const char *help_lines[] = {
     "   Enter copy, q leave      ]  paste",
     "",
     "d  detach   r  redraw   a  literal " PREFIX_NAME,
-    "q  end session          h  " PREFIX_NAME "-h  this help",
+    "q  end session          h or ?  this help",
     "",
     "any key closes this",
 };

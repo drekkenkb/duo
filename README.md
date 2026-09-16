@@ -130,11 +130,11 @@ Press **Ctrl-a**, then:
 | `r` | redraw                                          |
 | `a` | send a literal Ctrl-a (start of line in bash)   |
 | `q` or `Q` | end the session and close every window (asks first) |
-| `h`, `Ctrl-h` or `?` | help                           |
+| `h` or `?` | help                                     |
 
 Every binding that needs shift has an unshifted alias, which helps on a phone
 keyboard: `,` renames, `x` closes a pane, `w` opens the window list, `q` ends
-the session, and `h` or `Ctrl-h` shows the help. Questions like "close this
+the session, and `h` shows the help (`?` still works). Questions like "close this
 window?" take **Enter** as well as `y`. `v`, `s` and `g` open a second pane by
 themselves, so `S` is only needed for a third.
 
