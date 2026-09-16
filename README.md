@@ -36,9 +36,14 @@ duo -k          # end the session and all its windows
 duo -s work     # a second, independent session named "work"
 ```
 
-A new session opens one window. `Ctrl-a c` adds more. If the connection
-drops, run `duo` again after reconnecting; if an old client is somehow still
-attached, the new one takes over.
+A new session opens **two** windows, which is what the name is about: two
+shells side by side is the layout it was built for, and `Ctrl-a c` expands
+from there (up to 16). `Ctrl-a Ctrl-a` flips between the two, and `Ctrl-a v`
+puts them on screen together. Change the starting count with
+`INITIAL_WINDOWS` in `src/config.h`.
+
+If the connection drops, run `duo` again after reconnecting; if an old client
+is somehow still attached, the new one takes over.
 
 ## Keys
 
@@ -162,7 +167,7 @@ Settings are in `src/config.h`; rebuild after changing them.
 - `PREFIX_KEY`: the command key. Ctrl-b (`0x02`) works well if you use
   Ctrl-a in bash a lot.
 - `INNER_TERM`: the `TERM` the shells see (default `screen-256color`).
-- `INITIAL_WINDOWS`: how many windows a new session opens (default 1).
+- `INITIAL_WINDOWS`: how many windows a new session opens (default 2).
 - `MESSAGE_MS`: how long status-bar messages stay up.
 
 ## How it works

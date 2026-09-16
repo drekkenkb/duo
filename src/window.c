@@ -144,7 +144,7 @@ void win_feed(int i, const char *p, size_t n)
         S.dirty = 1;
         if (S.cm.active && win_visible_pane(i) == S.focus)
             cm_follow_output();
-    } else if (!w->activity) {
+    } else if (!w->activity && w->seen) {
         w->activity = 1;
         S.dirty = 1; /* the status bar marks it */
     }

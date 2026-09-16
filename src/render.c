@@ -91,6 +91,7 @@ static void draw_pane(int p, Rect r)
         return;
     VTerm *vt = S.win[w]->vt;
     int cols = MIN(r.w, vt->cols);
+    S.win[w]->seen = 1;
 
     for (int y = 0; y < r.h; y++)
         for (int x = 0; x < r.w; x++)

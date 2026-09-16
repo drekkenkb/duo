@@ -10,9 +10,9 @@
 /* TERM for the shells inside. Its terminfo must exist on this machine. */
 #define INNER_TERM      "screen-256color"
 
-/* Windows to open when a session starts. 1 is screen's behaviour; set it to
- * 2 (with C-a v or C-a S once inside) for duo's original two-shell start. */
-#define INITIAL_WINDOWS 1
+/* Windows a new session opens. Two is the default duo is named for; C-a c
+ * adds more, up to MAX_WINDOWS. Set it to 1 for screen's behaviour. */
+#define INITIAL_WINDOWS 2
 
 /* How long transient status-bar messages stay up. */
 #define MESSAGE_MS      3000

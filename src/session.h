@@ -24,6 +24,7 @@ typedef struct {
     char    auto_name[NAME_LEN];  /* what's running, from /proc */
     char    name[NAME_LEN];       /* set with C-a A; empty means use auto_name */
     int     activity;       /* output arrived while off screen */
+    int     seen;           /* has been on screen at least once */
 } Window;
 
 /* A pane shows exactly one window, and a window appears in at most one pane,

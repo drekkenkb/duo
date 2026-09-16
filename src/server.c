@@ -231,6 +231,20 @@ static void list_windows_message(void)
     set_message("%s", text);
 }
 
+/* A split layout needs something to split: with a single pane open, make the
+ * second one rather than just relabelling the layout. */
+static void set_layout(int lay)
+{
+    if (lay != LAYOUT_TABS && S.npanes < 2 && S.nwins > 1) {
+        int keep = S.focus;
+        session_add_pane();
+        S.focus = MIN(keep, S.npanes - 1);
+    }
+    S.layout = lay;
+    session_apply_layout();
+    set_message("layout: %s", layout_name(lay));
+}
+
 /* ---- keys ------------------------------------------------------------- */
 
 /* Runs one command after the prefix. Returns 1 if the rest of the chunk
@@ -281,19 +295,11 @@ static int prefix_command(const char *p, size_t n)
         break;
     case 'S': session_add_pane(); break;
     case 'X': session_close_pane(); break;
-    case 't': S.layout = LAYOUT_TABS; session_apply_layout();
-        set_message("layout: %s", layout_name(S.layout)); break;
-    case 'v': case '|': S.layout = LAYOUT_COLS; session_apply_layout();
-        set_message("layout: %s", layout_name(S.layout)); break;
-    case 's': case '-': S.layout = LAYOUT_ROWS; session_apply_layout();
-        set_message("layout: %s", layout_name(S.layout)); break;
-    case 'g': S.layout = LAYOUT_GRID; session_apply_layout();
-        set_message("layout: %s", layout_name(S.layout)); break;
-    case ' ':
-        S.layout = (S.layout + 1) % LAYOUT_COUNT;
-        session_apply_layout();
-        set_message("layout: %s", layout_name(S.layout));
-        break;
+    case 't': set_layout(LAYOUT_TABS); break;
+    case 'v': case '|': set_layout(LAYOUT_COLS); break;
+    case 's': case '-': set_layout(LAYOUT_ROWS); break;
+    case 'g': set_layout(LAYOUT_GRID); break;
+    case ' ': set_layout((S.layout + 1) % LAYOUT_COUNT); break;
     case '[': cm_enter(); break;
     case ']': cm_paste(); break;
     case 'd': want_detach = 1; break;
@@ -525,6 +531,7 @@ static int server_run(int lfd, const char *path, int rows, int cols)
     S.npanes = 1;
     S.pane[0].win = 0;
     S.focus = 0;
+    S.last_win = S.nwins > 1 ? 1 : 0;   /* so C-a C-a toggles from the start */
 
     long long names_at = 0;
 
