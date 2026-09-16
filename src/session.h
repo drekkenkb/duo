@@ -69,6 +69,7 @@ typedef struct {
     int      prompt;                /* PROMPT_* */
     char     prompt_buf[128];
     int      prompt_len;
+    int      prefix;                /* prefix pressed, waiting for a command key */
     int      picker, picker_sel;    /* window list overlay */
     int      help;
 

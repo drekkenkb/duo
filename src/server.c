@@ -36,7 +36,6 @@ typedef struct {
 static Conn conns[MAX_CONNS];
 static int  attached = -1;
 static int  want_detach;
-static int  prefix_pending;
 static int  sig_pipe[2];
 
 long long now_ms(void)
@@ -339,9 +338,9 @@ static void handle_input(const char *p, size_t n)
         prompt_keys(p, n);
         return;
     }
-    if (S.cm.active && !prefix_pending) {
+    if (S.cm.active && !S.prefix) {
         if (n == 1 && (unsigned char)p[0] == PREFIX_KEY) {
-            prefix_pending = 1;
+            S.prefix = 1;
             S.dirty = 1;
             return;
         }
@@ -351,8 +350,8 @@ static void handle_input(const char *p, size_t n)
 
     size_t i = 0;
     while (i < n) {
-        if (prefix_pending) {
-            prefix_pending = 0;
+        if (S.prefix) {
+            S.prefix = 0;
             S.dirty = 1;
             if (prefix_command(p + i, n - i))
                 return;
@@ -366,7 +365,7 @@ static void handle_input(const char *p, size_t n)
             win_write(w, p + i, end - i);
         if (!hit)
             break;
-        prefix_pending = 1;
+        S.prefix = 1;
         S.dirty = 1;
         i = end + 1;
     }
@@ -385,7 +384,7 @@ static void conn_close(int c)
     buf_free(&k->out);
     if (c == attached) {
         attached = -1;
-        prefix_pending = S.help = S.picker = 0;
+        S.prefix = S.help = S.picker = 0;
         S.prompt = PROMPT_NONE;
         if (S.cm.active)
             cm_exit();
@@ -411,7 +410,7 @@ static void attach_conn(int c, int rows, int cols)
     attached = c;
     S.rows = rows;
     S.cols = cols;
-    prefix_pending = S.help = S.picker = 0;
+    S.prefix = S.help = S.picker = 0;
     S.prompt = PROMPT_NONE;
     render_reset();
     session_apply_layout();

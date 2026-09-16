@@ -213,7 +213,13 @@ static void draw_status(void)
     char right[256];
     uint32_t rfg = BAR_FG, rbg = BAR_BG;
     uint8_t rattr = 0;
-    if (S.cm.active) {
+    if (S.prefix) {
+        /* Momentary: shows the prefix landed and a command key is expected. */
+        snprintf(right, sizeof right, " " PREFIX_NAME " _ ");
+        rfg = COLOR_PAL(16);
+        rbg = COLOR_PAL(214);
+        rattr = ATTR_BOLD;
+    } else if (S.cm.active) {
         VTerm *vt = focused_window() ? focused_window()->vt : NULL;
         int back = vt ? (vt->sb_count - S.cm.view_top) : 0;
         snprintf(right, sizeof right, " COPY -%d%s%.24s  Space sel  Enter copy  / search  q ",
