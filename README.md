@@ -34,7 +34,20 @@ duo             # attach to the session, starting it if it isn't running
 duo -l          # list running sessions
 duo -k          # end the session and all its windows
 duo -s work     # a second, independent session named "work"
+duo -d          # start the session in the background without attaching
 ```
+
+`-d` needs no terminal, so a boot script can start a session for you to attach
+to later, e.g. in `crontab -e`:
+
+```
+@reboot $HOME/.local/bin/duo -s work -d
+```
+
+It uses the session file like a normal start, reports a mistake in it (to the
+cron mail or log) and changes nothing if the session is already running. Windows
+start at 80x24 and take your terminal's size when you attach. Cron's environment
+is minimal: a window command that needs your `PATH` should set it or use full paths.
 
 A new session opens **two** windows, which is what the name is about: two
 shells side by side is the layout it was built for, and `Ctrl-a c` expands

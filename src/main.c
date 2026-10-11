@@ -5,6 +5,7 @@
  *   duo -s NAME    use a named session instead of "default"
  *   duo -l         list running sessions
  *   duo -k         end the session and all its windows
+ *   duo -d         start the session without attaching (for boot scripts)
  *   duo -f FILE    session file to use when starting it
  */
 #include "conf.h"
@@ -71,7 +72,7 @@ int sock_connect(const char *path)
 static void usage(FILE *f)
 {
     fprintf(f,
-        "usage: duo [-s NAME] [-f FILE] [-l | -k]\n"
+        "usage: duo [-s NAME] [-f FILE] [-l | -k | -d]\n"
         "\n"
         "  (no option)  attach to the session, starting it if it isn't running\n"
         "  -s NAME      use session NAME instead of \"default\"\n"
@@ -79,6 +80,8 @@ static void usage(FILE *f)
         "               (default: ~/.config/duo/NAME.conf, else default.conf)\n"
         "  -l           list running sessions\n"
         "  -k           end the session, closing all its windows\n"
+        "  -d           start the session in the background without attaching;\n"
+        "               needs no terminal (for cron @reboot or a service)\n"
         "  -h           this help\n"
         "\n"
         "Inside: Ctrl-a c new window, Ctrl-a S split, Ctrl-a ? help,\n"
@@ -118,19 +121,20 @@ int main(int argc, char **argv)
 {
     const char *name = "default";
     const char *conf_path = NULL;
-    int kill_it = 0, list = 0, opt;
+    int kill_it = 0, list = 0, detach = 0, opt;
 
-    while ((opt = getopt(argc, argv, "s:f:lkh")) != -1) {
+    while ((opt = getopt(argc, argv, "s:f:lkdh")) != -1) {
         switch (opt) {
         case 's': name = optarg; break;
         case 'f': conf_path = optarg; break;
         case 'l': list = 1; break;
         case 'k': kill_it = 1; break;
+        case 'd': detach = 1; break;
         case 'h': usage(stdout); return 0;
         default:  usage(stderr); return 2;
         }
     }
-    if (optind != argc) {
+    if (optind != argc || list + kill_it + detach > 1) {
         usage(stderr);
         return 2;
     }
@@ -156,18 +160,8 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    if (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO)) {
-        fprintf(stderr, "duo: needs a terminal (with ssh, use: ssh -t host duo)\n");
-        return 1;
-    }
-    const char *inside = getenv("DUO_SESSION");
-    if (inside && strcmp(inside, path) == 0) {
-        fprintf(stderr, "duo: already inside session '%s'\n", name);
-        return 1;
-    }
-
     /* A config file only applies when the session starts, so check it here,
-     * while there is still a normal terminal to print the mistake to. */
+     * while there is still a terminal (or a log, with -d) to print the mistake to. */
     char conf_buf[512], conf_err[256];
     if (!conf_path && conf_find(name, conf_buf, sizeof conf_buf))
         conf_path = conf_buf;
@@ -177,6 +171,42 @@ int main(int argc, char **argv)
             fprintf(stderr, "duo: %s\n", conf_err);
             return 1;
         }
+    }
+
+    if (detach) {
+        int fd = sock_connect(path);
+        if (fd >= 0) {
+            close(fd);
+            printf("duo: session '%s' is already running\n", name);
+            return 0;
+        }
+        if (errno != ENOENT && errno != ECONNREFUSED) {
+            fprintf(stderr, "duo: connect %s: %s\n", path, strerror(errno));
+            return 1;
+        }
+        /* No terminal to size it from: 24x80 until a client attaches and
+         * sends its real size. */
+        if (server_start(path, 24, 80, conf_path) < 0)
+            return 1;
+        fd = sock_connect(path);
+        if (fd < 0) {
+            fprintf(stderr, "duo: session did not start: %s\n", strerror(errno));
+            return 1;
+        }
+        close(fd);
+        printf("duo: started session '%s'; attach with: duo%s%s\n", name,
+               strcmp(name, "default") ? " -s " : "", strcmp(name, "default") ? name : "");
+        return 0;
+    }
+
+    if (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO)) {
+        fprintf(stderr, "duo: needs a terminal (with ssh, use: ssh -t host duo)\n");
+        return 1;
+    }
+    const char *inside = getenv("DUO_SESSION");
+    if (inside && strcmp(inside, path) == 0) {
+        fprintf(stderr, "duo: already inside session '%s'\n", name);
+        return 1;
     }
 
     int fd = sock_connect(path);
