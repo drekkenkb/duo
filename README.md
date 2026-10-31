@@ -70,7 +70,7 @@ panes 2                 # how many panes are open at the start
 focus 1                 # which window has focus (1-based)
 
 window shell
-window climate -- watch -n 5 python3 /home/matt/aht20/aht20.py
+window sensor -- watch -n 5 python3 ~/sensor.py
 window logs    -- journalctl -f
 ```
 
