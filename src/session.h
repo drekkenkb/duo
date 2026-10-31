@@ -123,6 +123,7 @@ void cm_search(const char *query, int dir);
 void cm_copy_selection(void);
 void cm_paste(void);
 void cm_follow_output(void);
+void cm_wheel(int delta);   /* lines, negative is back in history */
 void cm_line_text(const VTerm *vt, int line, char *out, size_t n);
 
 /* render.c */

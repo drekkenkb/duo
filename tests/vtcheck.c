@@ -1,4 +1,5 @@
 /* Terminal emulator tests: feed escape sequences, check the grid. */
+#include "mouse.h"
 #include "vterm.h"
 
 #include <locale.h>
@@ -278,6 +279,59 @@ static void test_fuzz(void)
     vt_free(vt);
 }
 
+static void test_mouse_modes(void)
+{
+    VTerm *vt = vt_new(4, 10);
+    CHECK(vt->mouse_mode == 0 && !vt->mouse_sgr, "mouse off at start");
+    FEED(vt, "\033[?1000h\033[?1002h\033[?1006h");
+    CHECK(vt->mouse_mode == 1002 && vt->mouse_sgr, "mode %d sgr %d", vt->mouse_mode, vt->mouse_sgr);
+    FEED(vt, "\033[?1000l");
+    CHECK(vt->mouse_mode == 1002, "turning off another mode keeps 1002: %d", vt->mouse_mode);
+    FEED(vt, "\033[?1002l\033[?1006l");
+    CHECK(vt->mouse_mode == 0 && !vt->mouse_sgr, "all off");
+    FEED(vt, "\033[?1003h\033c");
+    CHECK(vt->mouse_mode == 0, "RIS clears mouse");
+    vt_free(vt);
+}
+
+static void test_mouse_codec(void)
+{
+    MouseEvent ev;
+    char out[32];
+    size_t n;
+
+    n = mouse_parse("\033[<64;12;5Mrest", 15, &ev);
+    CHECK(n == 11 && ev.b == 64 && ev.x == 11 && ev.y == 4 && !ev.release,
+          "sgr wheel: n=%zu b=%d x=%d y=%d", n, ev.b, ev.x, ev.y);
+    n = mouse_parse("\033[<0;300;2m", 11, &ev);
+    CHECK(n == 11 && ev.b == 0 && ev.x == 299 && ev.release, "sgr release, wide column");
+    CHECK(mouse_parse("\033[<0;1", 6, &ev) == 0, "incomplete sgr");
+    CHECK(mouse_parse("\033[A", 3, &ev) == 0, "arrow key is not a mouse report");
+    n = mouse_parse("\033[M`!!", 6, &ev);
+    CHECK(n == 6 && ev.b == 64 && ev.x == 0 && ev.y == 0, "x10 wheel");
+
+    ev = (MouseEvent){ 65, 4, 2, 0 };
+    n = mouse_encode(&ev, 1000, 1, out);
+    CHECK(n && strncmp(out, "\033[<65;5;3M", n) == 0, "sgr encode: %.*s", (int)n, out);
+    n = mouse_encode(&ev, 1000, 0, out);
+    CHECK(n == 6 && out[3] == 65 + 32 && out[4] == 5 + 32 && out[5] == 3 + 32, "x10 encode");
+    CHECK(mouse_encode(&ev, 0, 1, out) == 0, "no mode, no report");
+
+    ev = (MouseEvent){ MOUSE_MOTION | 0, 1, 1, 0 };
+    CHECK(mouse_encode(&ev, 1000, 1, out) == 0, "1000 drops drags");
+    CHECK(mouse_encode(&ev, 1002, 1, out) > 0, "1002 keeps drags");
+    ev.b = MOUSE_MOTION | 3;
+    CHECK(mouse_encode(&ev, 1002, 1, out) == 0, "1002 drops bare motion");
+    CHECK(mouse_encode(&ev, 1003, 1, out) > 0, "1003 keeps bare motion");
+
+    ev = (MouseEvent){ 0, 1, 1, 1 };
+    n = mouse_encode(&ev, 1000, 0, out);
+    CHECK(n == 6 && out[3] == 3 + 32, "x10 release is button 3");
+    CHECK(mouse_encode(&ev, 9, 0, out) == 0, "mode 9 has no releases");
+    ev = (MouseEvent){ 0, 300, 1, 0 };
+    CHECK(mouse_encode(&ev, 1000, 0, out) == 0, "x10 can't reach column 301");
+}
+
 int main(void)
 {
     setlocale(LC_CTYPE, "");
@@ -295,6 +349,8 @@ int main(void)
     test_split_sequences();
     test_resize();
     test_tabs();
+    test_mouse_modes();
+    test_mouse_codec();
     test_fuzz();
 
     printf("%d/%d checks passed\n", checks - failures, checks);

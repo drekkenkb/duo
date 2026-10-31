@@ -71,6 +71,8 @@ typedef struct {
     int     autowrap, origin, insert;
     int     cursor_visible;
     int     app_cursor, app_keypad, bracketed_paste;
+    int     mouse_mode;     /* 0, or 9/1000/1002/1003: which events the program wants */
+    int     mouse_sgr;      /* ...reported as ESC [ < b;x;y M (1006) */
 
     SavedCursor saved_main, saved_alt;
 

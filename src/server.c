@@ -3,6 +3,7 @@
 #include "conf.h"
 #include "config.h"
 #include "duo.h"
+#include "mouse.h"
 #include "proto.h"
 #include "session.h"
 
@@ -313,7 +314,128 @@ static int prefix_command(const char *p, size_t n)
     return 1;
 }
 
-static void handle_input(const char *p, size_t n)
+/* ---- mouse ------------------------------------------------------------ */
+
+#define WHEEL_LINES 3
+
+/* For a window whose program doesn't take the mouse, the wheel scrolls duo's
+ * own history (entering copy mode) on the main screen, and sends arrow keys
+ * on the alternate screen, where less, man and friends treat them as
+ * scrolling, as terminals do themselves. */
+static void wheel_fallback(int pane, int up)
+{
+    Window *w = S.win[S.pane[pane].win];
+    if (w->vt->alt_active) {
+        const char *key = w->vt->app_cursor ? (up ? "\033OA" : "\033OB")
+                                            : (up ? "\033[A" : "\033[B");
+        for (int i = 0; i < WHEEL_LINES; i++)
+            win_write(w, key, 3);
+        return;
+    }
+    if (!S.cm.active) {
+        if (!up)
+            return;             /* already at the bottom */
+        session_focus_pane(pane);
+        cm_enter();
+    }
+    cm_wheel(up ? -WHEEL_LINES : WHEEL_LINES);
+}
+
+/* The outer terminal reports the mouse whenever duo is attached (see
+ * render.c). A click on another pane focuses that pane; the wheel goes to
+ * whichever pane is under the pointer; the rest goes to the focused pane,
+ * clamped to it so drags past the edge still end, if its program asked for
+ * the mouse. */
+static void mouse_event(MouseEvent ev)
+{
+    static int swallow;     /* a click spent on focusing: drop its drag and release */
+    if (swallow && !(ev.b & MOUSE_WHEEL) && (ev.release || (ev.b & MOUSE_MOTION))) {
+        if (ev.release)
+            swallow = 0;
+        return;
+    }
+
+    Rect r[MAX_PANES];
+    int lay = layout_rects(S.layout, S.npanes, S.rows, S.cols, r);
+    int under = -1;
+    if (lay == LAYOUT_TABS) {
+        under = S.focus;
+    } else {
+        for (int p = 0; p < S.npanes; p++)
+            if (ev.x >= r[p].x && ev.x < r[p].x + r[p].w &&
+                ev.y >= r[p].y && ev.y < r[p].y + r[p].h)
+                under = p;
+    }
+
+    int wheel = ev.b & MOUSE_WHEEL;
+    int press = !ev.release && !(ev.b & MOUSE_MOTION);
+    int up = (ev.b & 3) == 0;
+
+    if (S.cm.active) {
+        /* copy mode owns the focused pane: only its wheel does anything */
+        if (wheel && under == S.focus && (ev.b & 3) <= 1)
+            cm_wheel(up ? -WHEEL_LINES : WHEEL_LINES);
+        else if (press && !wheel && under >= 0 && under != S.focus) {
+            swallow = 1;
+            session_focus_pane(under);
+        }
+        return;
+    }
+
+    int target = S.focus;
+    if (wheel) {
+        if (under < 0)
+            return;
+        target = under;
+    } else if (press) {
+        swallow = under < 0;
+        if (under < 0)
+            return;             /* status bar or a divider */
+        if (under != S.focus) {
+            swallow = 1;
+            session_focus_pane(under);
+            S.dirty = 1;
+            return;
+        }
+    }
+
+    Window *w = S.win[S.pane[target].win];
+    if (!w->vt->mouse_mode) {
+        if (wheel && (ev.b & 3) <= 1)
+            wheel_fallback(target, up);
+        return;
+    }
+    Rect pr = r[target];
+    ev.x = MAX(0, MIN(ev.x - pr.x, pr.w - 1));
+    ev.y = MAX(0, MIN(ev.y - pr.y, pr.h - 1));
+    char out[32];
+    size_t len = mouse_encode(&ev, w->vt->mouse_mode, w->vt->mouse_sgr, out);
+    if (len)
+        win_write(w, out, len);
+}
+
+/* Takes the mouse reports out of a chunk of input, handling them unless
+ * something else (copy mode, a prompt, the prefix) has the keyboard, and
+ * leaves the remaining bytes in *rest. Returns the new length. */
+static size_t strip_mouse(const char *p, size_t n, char *rest)
+{
+    int busy = S.help || S.picker || S.prompt != PROMPT_NONE || S.prefix;
+    size_t i = 0, k = 0;
+    while (i < n) {
+        MouseEvent ev;
+        size_t len = p[i] == 0x1b ? mouse_parse(p + i, n - i, &ev) : 0;
+        if (len) {
+            if (!busy)
+                mouse_event(ev);
+            i += len;
+        } else {
+            rest[k++] = p[i++];
+        }
+    }
+    return k;
+}
+
+static void handle_keys(const char *p, size_t n)
 {
     if (S.help) {
         S.help = 0;
@@ -358,6 +480,19 @@ static void handle_input(const char *p, size_t n)
         S.prefix = 1;
         S.dirty = 1;
         i = end + 1;
+    }
+}
+
+static void handle_input(const char *p, size_t n)
+{
+    static char rest[65536];
+    while (n > 0) {
+        size_t part = MIN(n, sizeof rest);
+        size_t k = strip_mouse(p, part, rest);
+        if (k)
+            handle_keys(rest, k);
+        p += part;
+        n -= part;
     }
 }
 

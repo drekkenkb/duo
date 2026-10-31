@@ -16,6 +16,7 @@ static Cell    *frame, *prev;
 static uint8_t *cover;          /* cells a pane drew, so the rest is divider */
 static int      frame_n;
 static int      sent_app_cursor = -1, sent_app_keypad = -1, sent_paste = -1;
+static int      sent_mouse = -1;
 
 static const uint32_t BAR_FG = COLOR_PAL(250), BAR_BG = COLOR_PAL(236);
 static const uint32_t SEL_FG = COLOR_PAL(231), SEL_BG = COLOR_PAL(25);
@@ -25,7 +26,7 @@ static const uint32_t EDGE_ON = COLOR_PAL(71), EDGE_OFF = COLOR_PAL(240);
 
 void render_reset(void)
 {
-    sent_app_cursor = sent_app_keypad = sent_paste = -1;
+    sent_app_cursor = sent_app_keypad = sent_paste = sent_mouse = -1;
     S.full_redraw = 1;
 }
 
@@ -453,6 +454,24 @@ static void emit_mode(Buf *o, int want, int *sent, const char *on, const char *o
     }
 }
 
+/* Asks the outer terminal for mouse reports, always in SGR form so any
+ * column can be reported; the server re-encodes for the program. Clicks and
+ * the wheel (1000) are always wanted, since the wheel scrolls duo's own
+ * history; a program asking for drags or motion gets those too. */
+static void emit_mouse(Buf *o, int want)
+{
+    if (want == 9)
+        want = 1000;
+    if (want == sent_mouse)
+        return;
+    static const char off[] = "\033[?1003l\033[?1002l\033[?1000l\033[?1006l";
+    if (sent_mouse != 0)
+        buf_append(o, off, sizeof off - 1);
+    if (want)
+        buf_appendf(o, "\033[?%dh\033[?1006h", want);
+    sent_mouse = want;
+}
+
 /* Hands the copy buffer to the terminal's own clipboard, for terminals that
  * take OSC 52. Harmless where they don't. */
 static void emit_clipboard(Buf *o)
@@ -526,6 +545,9 @@ void render(Buf *out)
         emit_mode(&o, S.cm.active ? 0 : vt->app_keypad, &sent_app_keypad, "\033=", "\033>");
         emit_mode(&o, vt->bracketed_paste, &sent_paste, "\033[?2004h", "\033[?2004l");
     }
+    int overlay = S.help || S.picker || S.prompt != PROMPT_NONE;
+    int mode = vt && !S.cm.active && vt->mouse_mode ? vt->mouse_mode : 1000;
+    emit_mouse(&o, overlay ? 0 : mode);
     if (S.clip_osc) {
         emit_clipboard(&o);
         S.clip_osc = 0;

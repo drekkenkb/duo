@@ -27,7 +27,7 @@ SHELLS ?=
 
 SRC     := $(wildcard src/*.c)
 HDR     := $(wildcard src/*.h)
-LIB_SRC := src/vterm.c src/buf.c
+LIB_SRC := src/vterm.c src/buf.c src/mouse.c
 
 .PHONY: all check asan install uninstall autostart uninstall-autostart help clean
 

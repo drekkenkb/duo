@@ -245,6 +245,7 @@ src/session.h the session model: windows, panes, modes
 src/window.c  windows and the window/pane rules
 src/layout.c  pane rectangles per layout
 src/copy.c    copy mode: movement, search, selection
+src/mouse.c   mouse reports: parsing the terminal's, encoding for programs
 src/render.c  compositing, status bar, overlays, screen diffing
 src/vterm.c   terminal emulator
 src/proto.c   message framing
@@ -253,8 +254,12 @@ src/proto.c   message framing
 ## Limitations
 
 - Up to 16 windows and 8 panes.
-- No mouse support. Use copy mode, or your terminal's own selection (which in
-  a split will span the panes).
+- duo takes the mouse from your terminal. Programs that ask for it (Claude
+  Code's fullscreen mode, vim with `mouse=a`, htop...) get it, scaled to their
+  pane; elsewhere the wheel scrolls back through the window's history in copy
+  mode (scrolling back to the bottom leaves it), or sends arrow keys in
+  full-screen programs like `less`. Clicking another pane focuses it. Your
+  terminal's own drag-to-select needs Shift held in most terminals.
 - Copy-mode search matches ASCII.
 - Scrollback is 2000 lines per window.
 - Combining characters (accents written as separate code points) are dropped.

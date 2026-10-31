@@ -325,6 +325,17 @@ static void set_dec_mode(VTerm *vt, int mode, int on)
         }
         break;
     case 2004: vt->bracketed_paste = on; break;
+    case 9:
+    case 1000:
+    case 1002:
+    case 1003:
+        /* one tracking mode at a time; turning off another leaves this one */
+        if (on)
+            vt->mouse_mode = mode;
+        else if (vt->mouse_mode == mode)
+            vt->mouse_mode = 0;
+        break;
+    case 1006: vt->mouse_sgr = on; break;
     default:   break;
     }
 }
@@ -779,6 +790,7 @@ void vt_reset(VTerm *vt)
     set_alt_screen(vt, 0, 0);
     soft_reset(vt);
     vt->bracketed_paste = 0;
+    vt->mouse_mode = vt->mouse_sgr = 0;
     Cell blank = { 0, COLOR_DEFAULT, COLOR_DEFAULT, 0 };
     fill_cells(vt->main, vt->rows * vt->cols, blank);
     fill_cells(vt->alt, vt->rows * vt->cols, blank);

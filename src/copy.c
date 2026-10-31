@@ -117,6 +117,23 @@ void cm_exit(void)
     S.dirty = 1;
 }
 
+/* The mouse wheel: moves the view rather than the cursor (the cursor is
+ * dragged along only to stay on screen), and scrolling back down to the live
+ * screen leaves copy mode unless a selection is in progress. */
+void cm_wheel(int delta)
+{
+    VTerm *vt = cm_vt();
+    if (!vt || !S.cm.active)
+        return;
+    int h = view_height();
+    int max_top = MAX(0, max_line(vt) - h + 1);
+    S.cm.view_top = MAX(0, MIN(S.cm.view_top + delta, max_top));
+    S.cm.line = MAX(S.cm.view_top, MIN(S.cm.line, S.cm.view_top + h - 1));
+    S.dirty = 1;
+    if (delta > 0 && S.cm.view_top >= max_top && !S.cm.sel)
+        cm_exit();
+}
+
 /* Output while copy mode is open shifts history indices only once the
  * scrollback ring is full and starts dropping its oldest lines. */
 void cm_follow_output(void)
