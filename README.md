@@ -265,3 +265,7 @@ src/proto.c   message framing
 - Combining characters (accents written as separate code points) are dropped.
 - Like `screen` and `tmux`, windows keep the environment of the session that
   started them. For example, `SSH_AUTH_SOCK` goes stale after you reconnect.
+
+## License
+
+MIT; see `LICENSE`.
