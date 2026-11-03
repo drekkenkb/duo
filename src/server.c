@@ -281,9 +281,16 @@ static int prefix_command(const char *p, size_t n)
     case 'n': session_next_window(1); break;
     case 'p': session_next_window(-1); break;
     case '0': session_select_window(9); break;
-    case '\t': case 'o':
-        session_focus_pane((S.focus + 1) % S.npanes);
+    case '\t': case 'o': {
+        /* With one window on screen there's no other pane to see, so move
+         * on to the next window instead of silently doing nothing. */
+        Rect r[MAX_PANES];
+        if (layout_rects(S.layout, S.npanes, S.rows, S.cols, r) == LAYOUT_TABS)
+            session_next_window(1);
+        else
+            session_focus_pane((S.focus + 1) % S.npanes);
         break;
+    }
     case 'S': session_add_pane(); break;
     case 'X': case 'x': session_close_pane(); break;
     case 't': set_layout(LAYOUT_TABS); break;

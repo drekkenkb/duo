@@ -313,7 +313,7 @@ static const char *help_lines[] = {
     PREFIX_NAME "  last window",
     "",
     "S  split: add a pane   x    close this pane",
-    "Tab  next pane         arrows  focus by direction",
+    "Tab  next pane/window  arrows  focus by direction",
     "t  one window          v    columns  (v, s and g",
     "s  rows                g    grid      split for you)",
     "Space  cycle layouts",

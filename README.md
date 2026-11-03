@@ -114,7 +114,7 @@ Press **Ctrl-a**, then:
 |----------------|---------------------------------------------|
 | `S`            | split: add a pane, showing another window   |
 | `x` or `X`     | close the focused pane (the window stays open) |
-| `Tab` or `o`   | focus the next pane                         |
+| `Tab` or `o`   | focus the next pane (next window in tabs)   |
 | arrow keys     | focus the pane in that direction            |
 | `t`            | one window, full screen                     |
 | `v` or `\|`    | columns                                     |
