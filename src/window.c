@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <termios.h>
 #include <unistd.h>
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -133,19 +134,44 @@ Window *focused_window(void)
     return (w >= 0 && w < S.nwins) ? S.win[w] : NULL;
 }
 
+/* Types a session file's command into the window once the shell is ready
+ * for it. Typed in while the pty is still in cooked mode with echo on (the
+ * shell starting up), the kernel echoes it straight away and the line editor
+ * shows it again after the prompt, so it appears twice. Line editors (zsh's
+ * ZLE, readline) switch canonical mode off while they read, so wait for that.
+ * Shells without one never switch, so fall back to the output going quiet
+ * for a moment, or a hard limit if the shell prints nothing at all.
+ * Returns 1 while a command is still waiting. */
+int win_send_pending(Window *w)
+{
+    if (!w->pending_cmd)
+        return 0;
+    if (w->fd < 0) {
+        free(w->pending_cmd);
+        w->pending_cmd = NULL;
+        return 0;
+    }
+    long long now = now_ms();
+    struct termios t;
+    int editor = tcgetattr(w->fd, &t) == 0 && !(t.c_lflag & ICANON);
+    int quiet = w->last_output && now - w->last_output >= PENDING_QUIET_MS;
+    int stale = now - w->pending_since >= PENDING_MAX_MS;
+    if (!editor && !quiet && !stale)
+        return 1;
+    char *cmd = w->pending_cmd;
+    w->pending_cmd = NULL;
+    win_write(w, cmd, strlen(cmd));
+    win_write(w, "\n", 1);
+    free(cmd);
+    return 0;
+}
+
 void win_feed(int i, const char *p, size_t n)
 {
     Window *w = S.win[i];
     vt_feed(w->vt, p, n);
-    /* The first output means the shell is up and reading, so a configured
-     * command can be typed in now without the shell's setup eating it. */
-    if (w->pending_cmd) {
-        char *cmd = w->pending_cmd;
-        w->pending_cmd = NULL;
-        win_write(w, cmd, strlen(cmd));
-        win_write(w, "\n", 1);
-        free(cmd);
-    }
+    w->last_output = now_ms();
+    win_send_pending(w);
     if (w->vt->reply_len) {
         win_write(w, w->vt->reply, w->vt->reply_len);
         w->vt->reply_len = 0;

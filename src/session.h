@@ -25,7 +25,9 @@ typedef struct {
     char    name[NAME_LEN];       /* set with C-a A; empty means use auto_name */
     int     activity;       /* output arrived while off screen */
     int     seen;           /* has been on screen at least once */
-    char   *pending_cmd;    /* typed in once the shell shows signs of life */
+    char   *pending_cmd;    /* typed in once the shell's line editor is up */
+    long long pending_since;   /* when the window started, for the fallback */
+    long long last_output;     /* when output last arrived (0: none yet) */
 } Window;
 
 /* A pane shows exactly one window, and a window appears in at most one pane,
@@ -97,6 +99,7 @@ void    win_free(Window *w);
 void    win_resize(Window *w, int rows, int cols);
 void    win_write(Window *w, const char *p, size_t n);
 void    win_feed(int i, const char *p, size_t n);
+int     win_send_pending(Window *w);
 void    win_read(int i);
 void    win_close_fd(Window *w);
 const char *win_label(const Window *w);

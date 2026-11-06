@@ -668,8 +668,10 @@ static int server_run(int lfd, const char *path, int rows, int cols,
         if (have_conf) {
             if (conf.win[i].name[0])
                 snprintf(w->name, sizeof w->name, "%s", conf.win[i].name);
-            if (conf.win[i].cmd[0])
+            if (conf.win[i].cmd[0]) {
                 w->pending_cmd = strdup(conf.win[i].cmd);
+                w->pending_since = now_ms();
+            }
         }
         S.win[S.nwins++] = w;
     }
@@ -690,6 +692,12 @@ static int server_run(int lfd, const char *path, int rows, int cols,
     long long names_at = 0;
 
     while (!S.quit) {
+        /* Commands from the session file wait for their shell (see
+         * win_send_pending), so check back while any are queued. */
+        int pending = 0;
+        for (int i = 0; i < S.nwins; i++)
+            pending |= win_send_pending(S.win[i]);
+
         struct pollfd pfd[2 + MAX_WINDOWS + MAX_CONNS];
         int nfd = 0;
         pfd[nfd++] = (struct pollfd){ lfd, POLLIN, 0 };
@@ -709,6 +717,9 @@ static int server_run(int lfd, const char *path, int rows, int cols,
             if (S.message[0])
                 timeout = (int)MAX(0, MIN(timeout, S.message_until - now_ms()));
         }
+
+        if (pending)
+            timeout = timeout < 0 ? PENDING_POLL_MS : MIN(timeout, PENDING_POLL_MS);
 
         if (poll(pfd, (nfds_t)nfd, timeout) < 0 && errno != EINTR)
             break;

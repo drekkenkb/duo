@@ -16,5 +16,11 @@
 
 /* How long transient status-bar messages stay up. */
 #define MESSAGE_MS      3000
+/* A session file's command is typed in once the shell's line editor is up;
+ * for shells without one, once output has paused this long, or at the latest
+ * this long after the window opened. */
+#define PENDING_QUIET_MS 300
+#define PENDING_MAX_MS   5000
+#define PENDING_POLL_MS  50
 
 #endif
