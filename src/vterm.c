@@ -704,7 +704,10 @@ static void feed_byte(VTerm *vt, unsigned char b)
             control(vt, b);
         } else if (b == '[') {
             begin_csi(vt);
-        } else if (b == ']') {
+        } else if (b == ']' || b == 'k') {
+            /* ESC k is screen's window title, which shells set to the
+             * running command when TERM is screen*; like an OSC it ends
+             * with ST or BEL. */
             vt->state = VT_OSC;
         } else if (b == 'P' || b == '_' || b == '^' || b == 'X') {
             vt->state = VT_STRING;

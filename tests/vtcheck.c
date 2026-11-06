@@ -198,6 +198,9 @@ static void test_strings_ignored(void)
     VTerm *vt = vt_new(2, 20);
     FEED(vt, "\033]0;my title\007ok\033]2;x\033\\!\033P1$r\033\\?");
     ROW_IS(vt, 0, "ok!?");
+    /* screen's title sequence, which zsh/bash prompts send under screen* */
+    FEED(vt, "\r\033[K\033kecho\033\\HI\033kvim\007!");
+    ROW_IS(vt, 0, "HI!");
     vt_free(vt);
 }
 
